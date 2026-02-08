@@ -1,30 +1,75 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
-import 'package:flutter/services.dart';
-import '../../professional/screens/demo_call_screen.dart';
+import '../widgets/unified_consultation_modal.dart';
 
-class ProfessionalConnectScreen extends StatelessWidget {
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
+
+class ProfessionalConnectScreen extends StatefulWidget {
   const ProfessionalConnectScreen({super.key});
 
-  final List<Expert> experts = const [
-    Expert(name: 'Dr. Sarah Smith', expertise: 'Senior Nutritionist', rating: 4.8, image: 'S'),
-    Expert(name: 'James Wilson', expertise: 'Physiotherapist', rating: 4.9, image: 'J'),
-    Expert(name: 'Elena Rodriguez', expertise: 'Fitness Expert', rating: 4.7, image: 'E'),
-  ];
+  @override
+  State<ProfessionalConnectScreen> createState() => _ProfessionalConnectScreenState();
+}
+
+class _ProfessionalConnectScreenState extends State<ProfessionalConnectScreen> {
+  List<Map<String, dynamic>> _specialists = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchSpecialists();
+  }
+
+  Future<void> _fetchSpecialists() async {
+    try {
+      final response = await supabase.Supabase.instance.client
+          .from('user_data')
+          .select()
+          .eq('role', 'specialist')
+          .limit(20);
+
+      if (mounted) {
+        setState(() {
+          _specialists = List<Map<String, dynamic>>.from(response);
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching specialists: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Connect with Experts')),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-           _buildSessionHeader(context),
-           const SizedBox(height: 24),
-           const Text("Recommended Experts", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-           const SizedBox(height: 16),
-           ...experts.map((e) => _buildExpertCard(context, e)),
-        ],
+      body: RefreshIndicator(
+        onRefresh: _fetchSpecialists,
+        child: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+             _buildSessionHeader(context),
+             const SizedBox(height: 24),
+             const Text("Recommended Experts", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+             const SizedBox(height: 16),
+             if (_isLoading)
+                const Center(child: CircularProgressIndicator())
+             else if (_specialists.isEmpty)
+                const Center(child: Text('No experts found at the moment.'))
+             else
+                ..._specialists.map((s) => _buildExpertCard(
+                  context, 
+                  Expert(
+                    name: s['name'] ?? 'Specialist', 
+                    expertise: s['specialization'] ?? 'Health Consultant', 
+                    rating: 4.8, 
+                    image: (s['name'] ?? 'S')[0]
+                  )
+                )),
+          ],
+        ),
       ),
     );
   }
@@ -36,7 +81,8 @@ class ProfessionalConnectScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withAlpha(13), blurRadius: 10)],
       ),
       child: Column(
         children: [
@@ -44,7 +90,7 @@ class ProfessionalConnectScreen extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 30,
-                backgroundColor: AppColors.primary.withOpacity(0.1),
+                backgroundColor: AppColors.primary.withAlpha(26),
                 child: Text(expert.image, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary)),
               ),
               const SizedBox(width: 16),
@@ -75,7 +121,7 @@ class ProfessionalConnectScreen extends StatelessWidget {
                   onPressed: () {},
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    side: BorderSide(color: AppColors.primary.withOpacity(0.5)),
+                    side: BorderSide(color: AppColors.primary.withAlpha(128)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   child: const Text('Book Session'),
@@ -89,11 +135,18 @@ class ProfessionalConnectScreen extends StatelessWidget {
                     gradient: AppColors.primaryGradient,
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
-                      BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4)),
+                      BoxShadow(color: AppColors.primary.withAlpha(76), blurRadius: 8, offset: const Offset(0, 4)),
                     ],
                   ),
                   child: ElevatedButton(
-                    onPressed: () => Navigator.pushNamed(context, '/join-session'),
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => const UnifiedConsultationModal(),
+                      );
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.transparent,
                       shadowColor: Colors.transparent,
@@ -116,7 +169,7 @@ class ProfessionalConnectScreen extends StatelessWidget {
         color: AppColors.secondary,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: AppColors.secondary.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(color: AppColors.secondary.withAlpha(76), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -136,22 +189,17 @@ class ProfessionalConnectScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () => _createNewSession(context),
-                  icon: const Icon(Icons.add, color: AppColors.secondary),
-                  label: const Text("Create Code", style: TextStyle(color: AppColors.secondary)),
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => const UnifiedConsultationModal(),
+                    );
+                  },
+                  icon: const Icon(Icons.videocam_rounded, color: AppColors.secondary),
+                  label: const Text("Consult Now", style: TextStyle(color: AppColors.secondary)),
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.white),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => Navigator.pushNamed(context, '/join-session'),
-                  icon: const Icon(Icons.login, color: Colors.white),
-                  label: const Text("Join with Code", style: TextStyle(color: Colors.white)),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.white),
-                    foregroundColor: Colors.white,
-                  ),
                 ),
               ),
             ],
@@ -161,63 +209,6 @@ class ProfessionalConnectScreen extends StatelessWidget {
     );
   }
 
-  void _createNewSession(BuildContext context) {
-    // Generate a random 6-digit code
-    final String code = (100000 + DateTime.now().millisecondsSinceEpoch % 900000).toString();
-    
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Session Created'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Share this code to start a meeting:'),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[300]!),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(code, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 2)),
-                  const SizedBox(width: 16),
-                  IconButton(
-                    icon: const Icon(Icons.copy, color: AppColors.primary),
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: code));
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Code copied!')));
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => DemoCallScreen(channelId: code)),
-              );
-            },
-            child: const Text('Start Call'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class Expert {

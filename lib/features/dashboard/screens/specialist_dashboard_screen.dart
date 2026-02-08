@@ -1,17 +1,137 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../core/theme.dart';
 import '../../../core/user_model.dart';
+import '../../../services/stream_service.dart';
+import '../../../services/auth_service.dart';
 
 import '../../../services/pdf_service.dart';
 import '../../../services/blockchain_service.dart';
 import 'package:open_file/open_file.dart';
 import '../../professional/screens/demo_call_screen.dart';
+import '../../professional/widgets/unified_consultation_modal.dart';
 
-class SpecialistDashboardScreen extends StatelessWidget {
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
+
+class SpecialistDashboardScreen extends StatefulWidget {
   final UserData specialist;
   const SpecialistDashboardScreen({super.key, required this.specialist});
+
+  @override
+  State<SpecialistDashboardScreen> createState() => _SpecialistDashboardScreenState();
+}
+
+class _SpecialistDashboardScreenState extends State<SpecialistDashboardScreen> {
+  List<Map<String, dynamic>> _patients = [];
+  List<Map<String, dynamic>> _reports = [];
+  List<Map<String, dynamic>> _foodLogs = [];
+  bool _isLoading = true;
+  UserData? _realSpecialist;
+  double _totalEarnings = 1497.0; // Mock base + dynamic if possible
+  int _communitySteps = 45200;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDashboardData();
+  }
+
+  Future<void> _fetchDashboardData() async {
+    await Future.wait([
+      _fetchSpecialistProfile(),
+      _fetchNewPatients(),
+      _fetchRecentReports(),
+      _fetchRecentFoodLogs(),
+    ]);
+    if (mounted) setState(() => _isLoading = false);
+  }
+
+  Future<void> _fetchSpecialistProfile() async {
+    final user = supabase.Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    try {
+      final data = await supabase.Supabase.instance.client
+          .from('user_data')
+          .select()
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (data != null && mounted) {
+        setState(() {
+          _realSpecialist = UserData(
+            name: data['full_name'] ?? data['name'] ?? 'Specialist',
+            email: user.email ?? '',
+            age: data['age'] ?? 35,
+            category: data['category'] ?? 'Health Specialist',
+            gender: data['gender'] ?? 'Male',
+            accountType: AccountType.specialist,
+            isAbhaVerified: true,
+          );
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching specialist profile: $e');
+    }
+  }
+
+  Future<void> _fetchRecentReports() async {
+    try {
+      final response = await supabase.Supabase.instance.client
+          .from('report_analysis')
+          .select('*, user_data(name)')
+          .order('created_at', ascending: false)
+          .limit(5);
+      
+      if (mounted) {
+        setState(() {
+          _reports = List<Map<String, dynamic>>.from(response);
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching reports: $e');
+    }
+  }
+
+  Future<void> _fetchRecentFoodLogs() async {
+    try {
+      final response = await supabase.Supabase.instance.client
+          .from('food_logs')
+          .select('*, user_data(name)')
+          .order('created_at', ascending: false)
+          .limit(5);
+      
+      if (mounted) {
+        setState(() {
+          _foodLogs = List<Map<String, dynamic>>.from(response);
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching food logs: $e');
+    }
+  }
+
+  Future<void> _fetchNewPatients() async {
+    try {
+      final response = await supabase.Supabase.instance.client
+          .from('user_data')
+          .select()
+          .eq('role', 'user')
+          .order('created_at', ascending: false)
+          .limit(10);
+
+      if (mounted) {
+        setState(() {
+          _patients = List<Map<String, dynamic>>.from(response);
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching patients: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   Future<void> _generateAndOpenPlan(BuildContext context, String name, String type) async {
     // Simulated patient data for PDF
@@ -61,11 +181,18 @@ class SpecialistDashboardScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Specialist Portal', style: GoogleFonts.outfit(fontSize: 14, color: AppColors.textLight)),
-            Text(specialist.name, style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
+            Text(_realSpecialist?.name ?? widget.specialist.name, style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
           ],
         ),
         actions: [
-          if (specialist.isAbhaVerified)
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+            onPressed: () async {
+              await AuthService().signOut();
+              if (mounted) Navigator.pushReplacementNamed(context, '/login');
+            },
+          ),
+          if (_realSpecialist?.isAbhaVerified ?? widget.specialist.isAbhaVerified)
             Padding(
               padding: const EdgeInsets.only(right: 16),
               child: Chip(
@@ -77,30 +204,129 @@ class SpecialistDashboardScreen extends StatelessWidget {
             ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildStatGrid(context),
-            const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: RefreshIndicator(
+        onRefresh: _fetchNewPatients,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildStatGrid(context),
+              const SizedBox(height: 24),
+              _buildEarningsStepsCard(context),
+              const SizedBox(height: 32),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('New Patients', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
+                  TextButton(onPressed: _fetchDashboardData, child: const Text('Refresh')),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (_isLoading)
+                const Center(child: CircularProgressIndicator())
+              else if (_patients.isEmpty)
+                const Center(child: Text('No new patients found.'))
+              else
+                ..._patients.map((p) => _buildConsultationCard(
+                  context, 
+                  p['name'] ?? 'User', 
+                  p['category'] ?? 'General', 
+                  'New Discovery', 
+                  'Needs Consultation'
+                )),
+              const SizedBox(height: 32),
+              Text('Health Shared reports', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              if (_reports.isEmpty)
+                _buildReportCard(context, 'Blood_Report_Rudraksh.pdf', 'Just now')
+              else
+                ..._reports.map((r) {
+                  final patientName = r['user_data']?['name'] ?? 'User';
+                  return _buildReportCard(context, 'Report: $patientName', 'Just now');
+                }),
+              const SizedBox(height: 32),
+              Text('Patient Food Consumption', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              if (_foodLogs.isEmpty)
+                const Center(child: Text('No recent food logs.', style: TextStyle(color: AppColors.textLight)))
+              else
+                ..._foodLogs.map((f) => _buildFoodLogCard(context, f)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEarningsStepsCard(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.primary, AppColors.primary.withOpacity(0.8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6)),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Active Patients', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
-                TextButton(onPressed: () {}, child: const Text('View All')),
+                const Text('Total Earnings', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                const SizedBox(height: 4),
+                Text('₹${_totalEarnings.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
               ],
             ),
-            const SizedBox(height: 16),
-            _buildConsultationCard(context, 'Rudraksh Zodage', 'Working Professional', '09:00 AM', 'Weight Loss'),
-            _buildConsultationCard(context, 'Sneha Kapoor', 'Housewife', '12:15 PM', 'Diet Planning'),
-            const SizedBox(height: 32),
-            Text('Health Shared reports', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            _buildReportCard(context, 'Blood_Report_Rudraksh.pdf', 'Just now'),
-            _buildReportCard(context, 'MRI_Sneha.jpg', '2 hours ago'),
-          ],
-        ),
+          ),
+          Container(height: 40, width: 1, color: Colors.white24),
+          const SizedBox(width: 24),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Community Steps', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                const SizedBox(height: 4),
+                Text(_communitySteps.toString(), style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFoodLogCard(BuildContext context, Map<String, dynamic> log) {
+    final patientName = log['user_data']?['name'] ?? 'User';
+    final calories = log['calories'] ?? 0;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: Colors.green.withOpacity(0.1),
+            child: const Icon(Icons.restaurant_rounded, color: Colors.green, size: 20),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(patientName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text('Consumed $calories kcal', style: const TextStyle(color: AppColors.textLight, fontSize: 12)),
+              ],
+            ),
+          ),
+          const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.textLight),
+        ],
       ),
     );
   }
@@ -208,97 +434,12 @@ class SpecialistDashboardScreen extends StatelessWidget {
   void _showSessionOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text('Video Consultation', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-                _createNewSession(context);
-              },
-              icon: const Icon(Icons.add_call),
-              label: const Text('Create New Session'),
-              style: ElevatedButton.styleFrom(padding: const EdgeInsets.all(16)),
-            ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/join-session');
-              },
-              icon: const Icon(Icons.keyboard_alt_outlined),
-              label: const Text('Join with Code'),
-              style: OutlinedButton.styleFrom(padding: const EdgeInsets.all(16)),
-            ),
-          ],
-        ),
-      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const UnifiedConsultationModal(),
     );
   }
 
-  void _createNewSession(BuildContext context) {
-    // Generate a random 6-digit code
-    final String code = (100000 + DateTime.now().millisecondsSinceEpoch % 900000).toString();
-    
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Session Created'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Share this code with your patient:'),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[300]!),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(code, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 2)),
-                  const SizedBox(width: 16),
-                  IconButton(
-                    icon: const Icon(Icons.copy, color: AppColors.primary),
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: code));
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Code copied!')));
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => DemoCallScreen(channelId: code)),
-              );
-            },
-            child: const Text('Start Call'),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildReportCard(BuildContext context, String title, String time) {
     return InkWell(

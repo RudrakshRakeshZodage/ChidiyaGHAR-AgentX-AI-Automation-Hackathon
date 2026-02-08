@@ -79,22 +79,22 @@ class _SeniorWellnessScreenState extends State<SeniorWellnessScreen> {
                         const SizedBox(height: 12),
                         Row(
                           children: [
-                            Expanded(child: _buildModuleCard(context, Icons.chair, "Chair Yoga", "Gentle mobility movement", "Follow these steps for Chair Yoga:\n\n1. Sit upright with feet flat.\n2. Inhale and lift arms.\n3. Exhale and twist to the right.\n4. Repeat for 5 minutes.")),
+                            Expanded(child: _buildModuleCard(context, "https://cdn-icons-png.flaticon.com/512/10438/10438127.png", "Chair Yoga", "Ginger (Adrak)", "Follow these steps for Chair Yoga:\n\n1. Sit upright with feet flat.\n2. Inhale and lift arms.\n3. Exhale and twist to the right.\n4. Repeat for 5 minutes.")),
                             const SizedBox(width: 12),
-                            Expanded(child: _buildModuleCard(context, Icons.favorite, "Heart Health", "Ayurvedic cardio care", "Ayurvedic Heart Care:\n\n• Arjun Tea in the morning.\n• Gentle walking (Prana walk).\n• Reduce salty and fried foods.")),
+                            Expanded(child: _buildModuleCard(context, "https://cdn-icons-png.flaticon.com/512/11556/11556627.png", "Heart Health", "Garlic (Lahasun)", "Ayurvedic Heart Care:\n\n• Arjun Tea in the morning.\n• Gentle walking (Prana walk).\n• Reduce salty and fried foods.")),
                           ],
                         ),
                         const SizedBox(height: 12),
                         Row(
                           children: [
-                            Expanded(child: _buildModuleCard(context, Icons.spa, "Pain Relief", "Natural joint solutions", "Joint Pain Relief:\n\n• Apply warm sesame oil.\n• Use Turmeric & Ginger paste.\n• Avoid cold drafts and ice water.")),
+                            Expanded(child: _buildModuleCard(context, "https://cdn-icons-png.flaticon.com/512/10431/10431707.png", "Pain Relief", "Turmeric (Haldi)", "Joint Pain Relief:\n\n• Apply warm sesame oil.\n• Use Turmeric & Ginger paste.\n• Avoid cold drafts and ice water.")),
                             const SizedBox(width: 12),
-                            Expanded(child: _buildModuleCard(context, Icons.nights_stay, "Sleep Aid", "Deep rest meditation", "Better Sleep:\n\n• Warm milk with nutmeg.\n• Massage feet with ghee.\n• Practice Brahmari Pranayama.")),
+                            Expanded(child: _buildModuleCard(context, "https://cdn-icons-png.flaticon.com/512/11548/11548590.png", "Sleep Aid", "Tulsi (Basil)", "Better Sleep:\n\n• Warm milk with nutmeg.\n• Massage feet with ghee.\n• Practice Brahmari Pranayama.")),
                           ],
                         ),
                         const SizedBox(height: 30),
                         const Text("Ask AI Vaidya", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF5D4037))),
-                        const Text("Combined Wisdom of Gemini & OpenAI", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                        const Text("Holistic Wisdom Powered by Groq", style: TextStyle(fontSize: 12, color: Colors.grey)),
                         const SizedBox(height: 12),
                         _buildChatInterface(),
                       ],
@@ -197,36 +197,62 @@ class _SeniorWellnessScreenState extends State<SeniorWellnessScreen> {
     );
   }
 
-  Widget _buildModuleCard(BuildContext context, IconData icon, String title, String subtitle, String detail) {
+  Widget _buildModuleCard(BuildContext context, String imageUrl, String title, String subtitle, String detail) {
     return InkWell(
       onTap: () {
         showModalBottomSheet(
           context: context,
-          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
           builder: (context) => Container(
             padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                const SizedBox(height: 24),
                 Row(
                   children: [
-                    Icon(icon, color: Colors.orange, size: 32),
+                    Image.network(imageUrl, width: 50, height: 50, errorBuilder: (c, e, s) => const Icon(Icons.spa, color: Colors.orange)),
                     const SizedBox(width: 16),
-                    Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF5D4037))),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF5D4037))),
+                          Text(subtitle, style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                Text(detail, style: const TextStyle(fontSize: 16, color: Colors.black87, height: 1.5)),
                 const SizedBox(height: 24),
+                Text(detail, style: const TextStyle(fontSize: 16, color: Colors.black87, height: 1.6)),
+                const SizedBox(height: 32),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF5D4037), padding: const EdgeInsets.symmetric(vertical: 16)),
-                    child: const Text("Start Session", style: TextStyle(color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF5D4037),
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    child: const Text("Start Wellness Session", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 ),
+                const SizedBox(height: 16),
               ],
             ),
           ),
@@ -236,21 +262,31 @@ class _SeniorWellnessScreenState extends State<SeniorWellnessScreen> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.orange.withOpacity(0.1)),
-          boxShadow: [BoxShadow(color: Colors.brown.withOpacity(0.02), blurRadius: 5)],
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.orange.withOpacity(0.05)),
+          boxShadow: [BoxShadow(color: Colors.brown.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-              child: Icon(icon, color: Colors.orange),
+              height: 60,
+              width: 60,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Image.network(
+                imageUrl, 
+                fit: BoxFit.contain,
+                errorBuilder: (c, e, s) => const Icon(Icons.local_florist, color: Colors.orange),
+              ),
             ),
             const SizedBox(height: 12),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF5D4037))),
-            Text(subtitle, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF5D4037))),
+            const SizedBox(height: 2),
+            Text(subtitle, style: const TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.w600)),
           ],
         ),
       ),

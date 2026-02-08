@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../core/theme.dart';
+import '../../../services/stream_service.dart';
 import 'demo_call_screen.dart';
 
 class JoinSessionScreen extends StatefulWidget {
@@ -25,17 +26,26 @@ class _JoinSessionScreenState extends State<JoinSessionScreen> {
 
     setState(() => _isLoading = true);
     
-    // Request permissions before joining
-    await [Permission.microphone, Permission.camera].request();
+    // Request permissions before joining via StreamService
+    final hasPermissions = await StreamService.requestPermissions();
 
-    if (mounted) {
-      setState(() => _isLoading = false);
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => DemoCallScreen(channelId: channelId),
-        ),
-      );
+    if (hasPermissions) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DemoCallScreen(channelId: channelId),
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Camera and Microphone permissions are required to join the call.')),
+        );
+      }
     }
   }
 

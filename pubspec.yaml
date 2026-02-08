@@ -53,6 +53,7 @@ dependencies:
   google_generative_ai: ^0.4.7
   web3dart: ^3.0.2
   open_file: ^3.3.2
+  agora_rtc_engine: ^6.5.3
 
 dev_dependencies:
   flutter_test:

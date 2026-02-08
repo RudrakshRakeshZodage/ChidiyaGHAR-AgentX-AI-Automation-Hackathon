@@ -7,14 +7,9 @@ class DualAiService {
   // Gemini Setup
   late final GenerativeModel _geminiModel;
 
-  DualAiService() {
-    _geminiModel = GenerativeModel(
-      model: 'gemini-1.5-flash-latest',
-      apiKey: ApiKeys.geminiKey,
-    );
-  }
+  DualAiService() {}
 
-  /// Queries both Gemini and OpenAI for holistic Ayurvedic advice
+  /// Queries Groq for holistic Ayurvedic advice using parallel personas
   Future<String> getAyurvedicAdvice(String query) async {
     final String systemPrompt = 
         "You are an expert Ayurvedic Vaidya and Modern Health Consultant. "
@@ -22,64 +17,53 @@ class DualAiService {
         "Focus on senior citizens. Keep it respectful, clear, and safe.";
 
     try {
-      // Create futures for parallel execution
-      final geminiFuture = _queryGemini(systemPrompt, query);
-      final openAiFuture = _queryOpenAi(systemPrompt, query);
+      // Create futures for parallel personified execution on Groq
+      final ayurvedicFuture = _queryGroq(
+        "You are an ancient Ayurvedic Vaidya (Doctor). Focus on herbs, doshas, and natural lifestyle.",
+        query
+      );
+      final modernFuture = _queryGroq(
+        "You are a modern nutritionist and MD. Focus on clinical evidence, calories, and bio-markers.",
+        query
+      );
 
-      // Wait for both results
-      final results = await Future.wait([geminiFuture, openAiFuture]);
+      final results = await Future.wait([ayurvedicFuture, modernFuture]);
       
-      final geminiResponse = results[0];
-      final openAiResponse = results[1];
-
-      return "🌿 **Ayurvedic Wisdom (Gemini)**:\n$geminiResponse\n\n"
-             "🔬 **Modern Insight (OpenAI)**:\n$openAiResponse\n\n"
-             "✨ **Holistic Verdict**: Both perspectives suggest focusing on balance and moderation. Please consult a doctor for severe symptoms.";
+      return "🌿 **Ayurvedic Wisdom (Vaidya)**:\n${results[0]}\n\n"
+             "🔬 **Modern Insight (Science)**:\n${results[1]}\n\n"
+             "✨ **Holistic Verdict**: Both perspectives suggest focusing on balance. Please consult a doctor for severe symptoms.";
 
     } catch (e) {
-      return "I apologize, but I'm having trouble connecting to the ancient wisdom archives right now. Error: $e";
+      return "I apologize, but I'm having trouble connecting to the wisdom archives. Error: $e";
     }
   }
 
-  Future<String> _queryGemini(String systemPrompt, String query) async {
+  Future<String> _queryGroq(String persona, String query) async {
     try {
-      final content = [Content.text("$systemPrompt\n\nUser Question: $query")];
-      final response = await _geminiModel.generateContent(content);
-      return response.text ?? "No advice available from Gemini.";
-    } catch (e) {
-      return "Gemini is meditating. (Error: $e)";
-    }
-  }
-
-  Future<String> _queryOpenAi(String systemPrompt, String query) async {
-    try {
-      final url = Uri.parse('https://api.openai.com/v1/chat/completions');
       final response = await http.post(
-        url,
+        Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${ApiKeys.openAiKey}',
+          'Authorization': 'Bearer ${ApiKeys.grokKey}',
         },
         body: jsonEncode({
-          'model': 'gpt-4o-mini', // or gpt-3.5-turbo if cost is concern
+          'model': 'llama-3.3-70b-versatile',
           'messages': [
-            {'role': 'system', 'content': systemPrompt},
+            {'role': 'system', 'content': persona},
             {'role': 'user', 'content': query}
           ],
-          'max_tokens': 300,
+          'temperature': 0.7,
         }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data['choices'][0]['message']['content'].toString();
-      } else if (response.statusCode == 429) {
-        return "OpenAI is currently overloaded (429 Rate Limit). Please try again in 30 seconds.";
+        return data['choices'][0]['message']['content'].toString().trim();
       } else {
-        return "OpenAI is unreachable (${response.statusCode}). Please check your API key credits.";
+        return "Insight unavailable (Error: ${response.statusCode})";
       }
     } catch (e) {
-      return "OpenAI is silent. (Error: $e)";
+      return "Thinking failed. (Error: $e)";
     }
   }
 }

@@ -3,10 +3,12 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  agora_rtc_engine
   app_links
   battery_plus
   connectivity_plus
   file_selector_windows
+  iris_method_channel
   permission_handler_windows
   printing
   stream_webrtc_flutter

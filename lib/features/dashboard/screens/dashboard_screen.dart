@@ -11,6 +11,7 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import '../../professional/screens/demo_call_screen.dart';
 import '../../wellness/screens/senior_wellness_screen.dart';
+import '../../professional/widgets/unified_consultation_modal.dart';
 
 class DashboardScreen extends StatefulWidget {
   final UserData user;
@@ -32,6 +33,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchUserData();
       _healthService.fetchTodayLogs();
+      _fetchSpecialists(); // ADDED: Discover specialists on startup
     });
 
     _healthService.addListener(_onHealthUpdate);
@@ -295,6 +297,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 32),
                   const SizedBox(height: 32),
                   _buildVideoConsultationCard(context),
+                  const SizedBox(height: 32),
+                  const Text('Specialists Online', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  _buildSpecialistCarousel(),
                   const SizedBox(height: 24),
                   _buildSeniorWellnessCard(context), // New Feature
                   const SizedBox(height: 24),
@@ -543,98 +549,81 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  void _showSessionOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text('Video Consultation', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-                _createNewSession(context);
-              },
-              icon: const Icon(Icons.add_call),
-              label: const Text('Create New Session'),
-              style: ElevatedButton.styleFrom(padding: const EdgeInsets.all(16)),
+  List<Map<String, dynamic>> _specialists = [];
+
+  Future<void> _fetchSpecialists() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('user_data')
+          .select()
+          .eq('role', 'specialist')
+          .limit(5);
+
+      if (mounted) {
+        setState(() {
+          _specialists = List<Map<String, dynamic>>.from(response);
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching specialists for dashboard: $e');
+    }
+  }
+
+  Widget _buildSpecialistCarousel() {
+    if (_specialists.isEmpty) {
+      return Container(
+        height: 100,
+        alignment: Alignment.center,
+        child: const Text('Searching for specialists...', style: TextStyle(color: AppColors.textLight)),
+      );
+    }
+
+    return SizedBox(
+      height: 120,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: _specialists.length,
+        itemBuilder: (context, index) {
+          final s = _specialists[index];
+          final name = s['name'] ?? 'Specialist';
+          return Container(
+            width: 100,
+            margin: const EdgeInsets.only(right: 16),
+            child: Column(
+              children: [
+                CircleAvatar(
+                  radius: 35,
+                  backgroundColor: AppColors.primary.withOpacity(0.1),
+                  child: Text(name[0], style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+                Text(
+                  s['specialization'] ?? 'Expert',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: AppColors.textLight, fontSize: 10),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/join-session'); // Ensure this route exists or handle inline
-              },
-              icon: const Icon(Icons.keyboard_alt_outlined),
-              label: const Text('Join with Code'),
-              style: OutlinedButton.styleFrom(padding: const EdgeInsets.all(16)),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  void _createNewSession(BuildContext context) {
-    // Generate a random 6-digit code
-    final String code = (100000 + DateTime.now().millisecondsSinceEpoch % 900000).toString();
-    
-    showDialog(
+  void _showSessionOptions(BuildContext context) {
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Session Created'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Share this code with your specialist:'),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[300]!),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(code, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 2)),
-                  const SizedBox(width: 16),
-                  IconButton(
-                    icon: const Icon(Icons.copy, color: AppColors.primary),
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: code));
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Code copied!')));
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => DemoCallScreen(channelId: code)),
-              );
-            },
-            child: const Text('Start Call'),
-          ),
-        ],
-      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const UnifiedConsultationModal(),
     );
   }
+
 }

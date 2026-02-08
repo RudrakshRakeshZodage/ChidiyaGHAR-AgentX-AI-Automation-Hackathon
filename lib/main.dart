@@ -11,7 +11,6 @@ import 'features/ai_chat/screens/ai_chat_screen.dart';
 import 'features/menstrual/screens/menstrual_screen.dart';
 import 'features/professional/screens/professional_screen.dart';
 import 'features/professional/screens/demo_call_screen.dart';
-import 'features/professional/screens/join_session_screen.dart';
 import 'features/auth/screens/post_signup_screen.dart';
 import 'features/profile/screens/profile_screen.dart';
 import 'features/dashboard/screens/specialist_dashboard_screen.dart';
@@ -83,7 +82,6 @@ class HealthApp extends StatelessWidget {
         '/analyze-report': (context) => const ReportAnalysisScreen(),
         '/menstrual': (context) => const MenstrualModule(),
         '/professionals': (context) => const ProfessionalConnectScreen(),
-        '/join-session': (context) => const JoinSessionScreen(),
         '/demo-call': (context) => const DemoCallScreen(),
         '/profile': (context) => const ProfileScreen(),
       },
