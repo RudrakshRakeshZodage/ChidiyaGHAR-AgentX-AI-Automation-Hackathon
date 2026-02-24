@@ -57,11 +57,4 @@ ChidiyaGHAR-Spectrum is designed with a sustainable business model that balances
 
 ---
 
-## 👨‍💻 Developer
-
-**Rudraksh Rakesh Zodage**
-- GitHub: [@RudrakshRakeshZodage](https://github.com/RudrakshRakeshZodage)
-
----
-
 **Built with ❤️ for the AgentX-AI-Automation-Hackathon**
