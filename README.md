@@ -1,16 +1,10 @@
 ﻿# ChidiyaGHAR-AgentX-AI-Automation-Hackathon
 
-![Logo](assets/logo.jpeg)
-
-![Hero](assets/hero.png)
-
-## 📊 Project Overview & Strategy
-
-To quickly understand our innovation, here are our core workflows and the revenue generation model:
+## 📊 Project Strategy & Workflows
 
 | Workflow Phase 1 | Workflow Phase 2 | Revenue Generation Model |
 | :---: | :---: | :---: |
-| ![Workflow 1](assets/workflow_1.png) | ![Workflow 2](assets/workflow_2.png) | ![Revenue Model](assets/revenue_generation.png) |
+| ![Workflow 1](assets/Workflow_1.png) | ![Workflow 2](assets/Workflow_2.png) | ![Revenue Model](assets/Revenue_generation.png) |
 
 ---
 
