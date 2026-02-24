@@ -8,7 +8,7 @@
 
 ---
 
-ChidiyaGHAR-Spectrum is an advanced AI-powered health and wellness automation platform designed for the AgentX-AI-Automation-Hackathon. It integrates cutting-edge AI technologies, Web3 decentralized identity, and real-time consultation features to provide a comprehensive healthcare experience.
+Vita AI is an advanced AI-powered health and wellness automation platform designed for the AgentX-AI-Automation-Hackathon. It integrates cutting-edge AI technologies, Web3 decentralized identity, and real-time consultation features to provide a comprehensive healthcare experience.
 
 ---
 
@@ -26,7 +26,7 @@ Utilize Gemini AI for diagnostics and facilitate expert consultations.
 
 ## 💰 Revenue Generation Model
 
-ChidiyaGHAR-Spectrum is designed with a sustainable business model that balances accessibility for users with profitability for service providers.
+Vita AI is designed with a sustainable business model that balances accessibility for users with profitability for service providers.
 
 ### Key Monetization Strategies:
 1. **Tiered Subscription Plans**: Personal, Family, and Enterprise levels for AI-driven health monitoring.
