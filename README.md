@@ -1,4 +1,4 @@
-﻿# ChidiyaGHAR-
+﻿# VitaAI
  
 ## 📊 Project Strategy & Workflows
 
