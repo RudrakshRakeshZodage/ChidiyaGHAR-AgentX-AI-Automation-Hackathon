@@ -1,5 +1,5 @@
-﻿# ChidiyaGHAR-AgentX-AI-Automation-Hackathon
-
+﻿# ChidiyaGHAR-
+ 
 ## 📊 Project Strategy & Workflows
 
 | Workflow Phase 1 | Workflow Phase 2 | Revenue Generation Model |
